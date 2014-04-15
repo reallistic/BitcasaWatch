@@ -28,24 +28,24 @@ EMAIL_TIMEOUT=600
 
 LAST_EMAIL_SEND=0
 
-if [ ! -f /var/lib/plexmediaserver/watch/runlog ]; then
-    touch /var/lib/plexmediaserver/watch/runlog || ( logger "Error running plexmediaserver-watch"; exit 1 )
+if [ ! -f runlog ]; then
+    touch runlog || ( logger "Error running plexmediaserver-watch"; exit 1 )
 fi
 
-echo "======================================" >> /var/lib/plexmediaserver/watch/runlog
-echo $(date) >> /var/lib/plexmediaserver/watch/runlog
-echo "param 0 is $0" >> /var/lib/plexmediaserver/watch/runlog
-echo $1 >> /var/lib/plexmediaserver/watch/runlog
-echo $EMAIL_ON_ERROR >> /var/lib/plexmediaserver/watch/runlog
-echo $METHOD >> /var/lib/plexmediaserver/watch/runlog
-echo $(dirname $0) >> /var/lib/plexmediaserver/watch/runlog
+echo "======================================" >> runlog
+echo $(date) >> runlog
+echo "param 0 is $0" >> runlog
+echo $1 >> runlog
+echo $EMAIL_ON_ERROR >> runlog
+echo $METHOD >> runlog
+echo $(dirname $0) >> runlog
 
 
 #Move to script dir
 #dirname gets the containing dir of the file path
 cd `dirname $0`
 if [ $# -lt 1 ]; then
-  echo "Improper number of parameters" >> /var/lib/plexmediaserver/watch/runlog
+  echo "Improper number of parameters" >> runlog
 fi
 
 LOG=$1
@@ -53,7 +53,7 @@ LOG=$1
 #Make sure log is set and we can write to it
 
 if [ -z "${LOG}" ]; then
-  echo "Set the log file as the first parameter" >>/var/lib/plexmediaserver/watch/runlog
+  echo "Set the log file as the first parameter" >>runlog
   exit 1
 fi
 
@@ -64,12 +64,12 @@ while [ 1 ]
 do
   #Create log if it doesn't exist
   if [ ! -f ${LOG} ]; then
-    touch ${LOG} || ( echo "Logfile '${LOG}' is not writeable" >>/var/lib/plexmediaserver/watch/runlog; exit 1 )
+    touch ${LOG} || ( echo "Logfile '${LOG}' is not writeable" >>runlog; exit 1 )
   fi
   
   #Check log is writeable
   if [ ! -w ${LOG} ]; then
-    echo "Logfile '${LOG}' is not writeable" >> /var/lib/plexmediaserver/watch/runlog
+    echo "Logfile '${LOG}' is not writeable" >> runlog
     exit 1
   fi
   
