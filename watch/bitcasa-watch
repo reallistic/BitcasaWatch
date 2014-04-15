@@ -1,0 +1,134 @@
+#!/bin/sh
+
+#This script will watch Bitcasa and ensure it continues to run on the plex servers
+
+#What method to use when watching Bitcasa
+#NOTE: CMD method is experimental and will not work in its current form
+#CMD - Launches Bitcasa and only continues if it crashes
+#PID - Checks for the Bitcasa PID every couple seconds
+
+METHOD="PID"
+
+#Send email when down?
+
+#0 = no
+#1 = yes
+
+EMAIL_ON_ERROR=1
+
+EMAIL_ADDR="" #not used but can be used for sending email instead
+USER_KEY="" #Pushover user key
+APP_KEY="" #Pushoever app key
+
+#Time between sending emails in seconds
+EMAIL_TIMEOUT=12000
+
+#X Server display to export Bitcasa to
+DISPLAY=1
+
+#Start program (Do not edit)
+
+LAST_EMAIL_SEND=0
+if [ ! -f /var/lib/plexmediaserver/Bitcasa/runlog ]; then
+    touch /var/lib/plexmediaserver/Bitcasa/runlog || ( logger "Error running bitcasa-watch"; exit 1 )
+fi
+
+echo "======================================" >> /var/lib/plexmediaserver/Bitcasa/runlog
+echo $(date) >> /var/lib/plexmediaserver/Bitcasa/runlog
+echo "param 0 is $0" >> /var/lib/plexmediaserver/Bitcasa/runlog
+echo $1 >> /var/lib/plexmediaserver/Bitcasa/runlog
+echo $EMAIL_ON_ERROR >> /var/lib/plexmediaserver/Bitcasa/runlog
+echo $METHOD >> /var/lib/plexmediaserver/Bitcasa/runlog
+echo $(dirname $0) >> /var/lib/plexmediaserver/Bitcasa/runlog
+
+
+#Move to script dir
+#dirname gets the containing dir of the file path
+cd `dirname $0`
+if [ $# -lt 1 ]; then
+  echo "Improper number of parameters" >> /var/lib/plexmediaserver/Bitcasa/runlog
+fi
+
+LOG=$1
+
+#Make sure log is set and we can write to it
+
+if [ -z "${LOG}" ]; then
+  echo "Set the log file as the first parameter" >> /var/lib/plexmediaserver/Bitcasa/runlog
+  exit 1
+fi
+
+#What does shift do?
+#shift
+while [ 1 ]
+do
+  #Create log if it doesn't exist
+  if [ ! -f ${LOG} ]; then
+    touch ${LOG} || ( echo "Logfile '${LOG}' is not writeable" >>runlog; exit 1 )
+  fi
+  
+  #Check log is writeable
+  if [ ! -w ${LOG} ]; then
+    echo "Logfile '${LOG}' is not writeable" >> runlog
+    exit 1
+  fi
+  
+  
+  BCDOWN=0
+  
+  #watch bitcasa in selected manner
+  
+  case $METHOD in
+    'PID')
+	if [ ! $(pidof Bitcasa) <> /dev/null ]; then
+        #if ! pidof -x Bitcasa > /dev/null ; then
+          BCDOWN=1
+          #(export DISPLAY:$DISPLAY; Bitcasa &) & >> ${LOG}
+          su plex -c "(export DISPLAY=:$DISPLAY; Bitcasa &) >> ${LOG} 2>&1 &"
+          echo "No pid found" >> ${LOG}
+        elif [ $(ls -l ${BCDIRTEST} | grep "cloud" | wc -l) -gt 1 ]; then
+          BCDOWN=1
+          kill -9 $(pidof Bitcasa)
+          umount /var/lib/plexmediaserver/Bitcasa/*
+          rmdir /var/lib/plexmediaserver/Bitcasa/*
+          echo "cloud/tv dir is improper" >> ${LOG}
+        elif [ $(ls -l ${BCDIRTEST} | grep "cloud" | wc -l) -lt 1 ]; then
+          BCDOWN=1
+          kill -9 $(pidof Bitcasa)
+          umount /var/lib/plexmediaserver/Bitcasa/*
+          rmdir /var/lib/plexmediaserver/Bitcasa/*
+          echo "cloud/tv dir doesn't exist" >> ${LOG}
+        fi
+        ;;
+    'CMD')
+        #With this method the idea is that the script will not continue past the next line until it crashes. This also assumes Bitcasa is currently not  running
+        #This WONT work because of the way we're calling this command and if bitcasa fails to launch it wont continue
+        #export DISPLAY:$DISPLAY; Bitcasa & >> ${LOG}
+        METHOD="PID"
+        BCDOWN=1
+        ;;
+    *)
+        echo "Error. Incorrect param '${METHOD}' specified for param METHOD" >> ${LOG}
+        exit 1
+        ;;
+  esac
+
+  if [ $BCDOWN = 1 ]; then
+    #send email
+      if [ $EMAIL_ON_ERROR = 1 ]; then
+        TIME_NOW=$(date +%s)
+        TIME_SINCE_LAST_SEND=$(($TIME_NOW - $LAST_EMAIL_SEND))
+        if [ $TIME_SINCE_LAST_SEND -gt $EMAIL_TIMEOUT ]; then
+            curl -s -F "token=${APP_KEY}" -F "user=${USER_KEY}" -F \
+	    "message=Bitcasa was restarted at $(date)\nThe last 30 lines of the log before the error happens:\n $(tail -n 30 ${LOG})" \
+            https://api.pushover.net/1/messages.json
+            LAST_EMAIL_SEND=$TIME_NOW
+         fi
+      fi
+      echo "$(date) [ERROR] Restarting Bitcasa" >> ${LOG}
+      #wait for bc to start back up
+      sleep 30
+  else
+    sleep 600
+  fi
+done
