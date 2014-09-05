@@ -2,26 +2,27 @@
 
 echo "installing curl"
 apt-get --yes install curl
-echo "changing folder"
-cd "/root"
-if [ ! -d "plexwatch/" ]; then
-    echo "Error cannot find plexwatch folder"
+if [ ! -d "init" ]; then
+    echo "Error cannot find init folder"
+    return 0
+fi
+if [ ! -d "watch" ]; then
+    echo "Error cannot find watch folder"
     return 0
 fi
 
-cd plexwatch
+chmod +x init/*
+chmod +x watch/*
 echo "Copying init files"
-cp -f init/* /etc/init.d/
+cp -fp init/* /etc/init.d/
 
 echo "Creating plex watch folder"
 mkdir -p /var/lib/plexmediaserver/watch
 
 echo "copying watch scripts"
-cp -f watch/bitcasa-watch /var/lib/plexmediaserver/Bitcasa/
-cp -f watch/plexmediaserver-watch /var/lib/plexmediaserver/watch
+cp -fp watch/*-watch /var/lib/plexmediaserver/watch
 
 echo "changing permissions"
-chown plex:nogroup /var/lib/plexmediaserver/Bitcasa/bitcasa-watch
 chown -hR plex:nogroup /var/lib/plexmediaserver/watch
 
 echo "Running on boot"

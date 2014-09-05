@@ -13,7 +13,7 @@
 PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/node/bin"
 DESC="Bitcasa-watch"
 NAME=bitcasa-watch
-DAEMON=/var/lib/plexmediaserver/Bitcasa/$NAME
+DAEMON=/var/lib/plexmediaserver/watch/$NAME
 SCRIPTNAME=/etc/init.d/$NAME
 USER=root
 GROUP=root

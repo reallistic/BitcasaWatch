@@ -16,20 +16,23 @@ METHOD="PID"
 
 EMAIL_ON_ERROR=1
 #location of bitcasa root dir
-BCDIRROOT=/var/lib/plexmediaserver/Bitcasa/
+BCDIRROOT=
 
 #dir name of a folder that should be mounted if bitcasa is running properly
-BCMOUNTTESTDIR=""
+BCMOUNTTESTDIR=
 
 EMAIL_ADDR="" #not used but can be used for sending email instead
 USER_KEY="" #Pushover user key
 APP_KEY="" #Pushoever app key
 
+USER="" # Bitcasa Username
+PASSWORD="" # Bitcasa Password
+ARGS="" #Additional Bitcasa Arguments
+
 #Time between sending emails in seconds
 EMAIL_TIMEOUT=12000
 
-#X Server display to export Bitcasa to
-DISPLAY=1
+MOUNTCMD=mount -tbitcasa $USER $BCDIRROOT -o password=$PASSWORD $ARGS
 
 #Start program (Do not edit)
 
@@ -85,32 +88,17 @@ do
   
   case $METHOD in
     'PID')
-	if [ ! $(pidof Bitcasa) <> /dev/null ]; then
-        #if ! pidof -x Bitcasa > /dev/null ; then
+	if [ ! $(pidof mount.bitcasa) <> /dev/null ]; then
           BCDOWN=1
-          #(export DISPLAY:$DISPLAY; Bitcasa &) & >> ${LOG}
-          su plex -c "(export DISPLAY=:$DISPLAY; Bitcasa &) >> ${LOG} 2>&1 &"
+          eval $MOUNTCMD
           echo "No pid found" >> ${LOG}
-        elif [ $(ls -l ${BCDIRROOT} | grep "${BCMOUNTTESTDIR}" | wc -l) -gt 1 ]; then
-          BCDOWN=1
-          kill -9 $(pidof Bitcasa)
-          umount "${BCDIRROOT}*"
-          rmdir "${BCDIRROOT}*"
-          echo "cloud/tv dir is improper" >> ${LOG}
         elif [ $(ls -l ${BCDIRROOT} | grep "${BCMOUNTTESTDIR}" | wc -l) -lt 1 ]; then
           BCDOWN=1
           kill -9 $(pidof Bitcasa)
           umount "${BCDIRROOT}*"
           rmdir "${BCDIRROOT}*"
-          echo "cloud/tv dir doesn't exist" >> ${LOG}
+          echo "Bitcasa ${BCDIRTEST} dir doesn't exist" >> ${LOG}
         fi
-        ;;
-    'CMD')
-        #With this method the idea is that the script will not continue past the next line until it crashes. This also assumes Bitcasa is currently not  running
-        #This WONT work because of the way we're calling this command and if bitcasa fails to launch it wont continue
-        #export DISPLAY:$DISPLAY; Bitcasa & >> ${LOG}
-        METHOD="PID"
-        BCDOWN=1
         ;;
     *)
         echo "Error. Incorrect param '${METHOD}' specified for param METHOD" >> ${LOG}
